@@ -9,28 +9,23 @@ import java.util.List;
  */
 public class Game extends World
 {
-    
-    /**
-     * Constructor for objects of class MyWorld.
-     * 
-     */
     public Game()
     {    
-        super(10, 20, 32);
+        super(10, 20, 32, false);
         prepare();
     }
     Block currentBlocks[] = new Block[4];
-    int currentShape; // 0=I, 1=J, 2=L, 3=S, 4=T, 5=Z
+    int currentShape; // 0=I, 1=J, 2=L, 3=O 4=S, 5=T, 6=Z
     int rotation;
-    boolean rotated = false;
+    boolean rotatedLeft = false;
+    boolean rotatedRight = false;
     int time = 0;
     int delay = 0;
-    int gravity = 120;//30;
+    int gravity = 48;
+    int drop = 2;
+    boolean dropped = false;
+    boolean downHeld = false;
     int rows[] = new int[getHeight()];
-    /**
-     * Prepare the world for the start of the program.
-     * That is: create the initial objects and add them to the world.
-     */
     private void prepare()
     {
         Greenfoot.setSpeed(50);
@@ -45,23 +40,35 @@ public class Game extends World
     public void act()
     {
         time++;
-        if (Greenfoot.isKeyDown("down"))
+        if (Greenfoot.isKeyDown("down") && !dropped && !downHeld)
         {
             time = gravity;
+            dropped = true;
+            downHeld = true;
         }
-        if (!rotated && Greenfoot.isKeyDown("z") && !collideLeft())
+        else if (!Greenfoot.isKeyDown("down"))
+        {
+            dropped = false;
+            downHeld = false;
+        }
+        
+        if (!rotatedLeft && Greenfoot.isKeyDown("x") && !collideLeft())
         {
             rotateLeft();
-            rotated = true;
+            rotatedLeft = true;
         }
-        else if (!rotated && Greenfoot.isKeyDown("x") && !collideRight())
+        else if (!Greenfoot.isKeyDown("x"))
+        {
+            rotatedLeft = false;
+        }
+        if (!rotatedRight && Greenfoot.isKeyDown("z") && !collideRight())
         {
             rotateRight();
-            rotated = true;
+            rotatedRight = true;
         }
-        else if (!Greenfoot.isKeyDown("z") && !Greenfoot.isKeyDown("x"))
+        else if (!Greenfoot.isKeyDown("z"))
         {
-            rotated = false;
+            rotatedRight = false;
         }
         if (Greenfoot.isKeyDown("left") && delay >= 10 && !collideLeft())
         {
@@ -81,7 +88,7 @@ public class Game extends World
             currentBlocks[3].setLocation(currentBlocks[3].getX() + 1, currentBlocks[3].getY());
         }
         else { delay++; }
-        if ((time >= gravity || (Greenfoot.isKeyDown("down") && time > gravity / 2)) && !collideBottom())
+        if ((time >= gravity || (dropped && time > drop)) && !collideBottom())
         {
             time = 0;
             currentBlocks[0].setLocation(currentBlocks[0].getX(), currentBlocks[0].getY() + 1);
@@ -94,6 +101,7 @@ public class Game extends World
     public void newBlocks()
     {
         currentShape = Greenfoot.getRandomNumber(6); //0=I, 1=J, 2=L, 3=S, 4=T, 5=Z
+        dropped = false;
         rotation = 0;
         if (currentShape == 0) //I
         {
@@ -120,15 +128,26 @@ public class Game extends World
         else if (currentShape == 2) //L
         {
             currentBlocks[0] = new Block();
+            addObject(currentBlocks[0],4,1);
+            currentBlocks[1] = new Block();
+            addObject(currentBlocks[1],4,0);
+            currentBlocks[2] = new Block();
+            addObject(currentBlocks[2],5,0);
+            currentBlocks[3] = new Block();
+            addObject(currentBlocks[3],6,0);
+        }
+        else if (currentShape == 3) //O
+        {
+            currentBlocks[0] = new Block();
             addObject(currentBlocks[0],4,0);
             currentBlocks[1] = new Block();
             addObject(currentBlocks[1],5,0);
             currentBlocks[2] = new Block();
-            addObject(currentBlocks[2],6,0);
+            addObject(currentBlocks[2],4,1);
             currentBlocks[3] = new Block();
-            addObject(currentBlocks[3],4,1);
+            addObject(currentBlocks[3],5,1);
         }
-        else if (currentShape == 3) //S
+        else if (currentShape == 4) //S
         {
             currentBlocks[0] = new Block();
             addObject(currentBlocks[0],5,0);
@@ -139,7 +158,7 @@ public class Game extends World
             currentBlocks[3] = new Block();
             addObject(currentBlocks[3],5,1);
         }
-        else if (currentShape == 4) //T
+        else if (currentShape == 5) //T
         {
             currentBlocks[0] = new Block();
             addObject(currentBlocks[0],4,0);
@@ -150,7 +169,7 @@ public class Game extends World
             currentBlocks[3] = new Block();
             addObject(currentBlocks[3],5,1);
         }
-        else if (currentShape == 5) //Z
+        else if (currentShape == 6) //Z
         {
             currentBlocks[0] = new Block();
             addObject(currentBlocks[0],4,0);
@@ -165,31 +184,27 @@ public class Game extends World
     
     public void checkRows()
     {
-        for (int row : rows)
+        for (int row = 0; row < rows.length; row++)
         {
-            if (row >= 10)
+            if (rows[row] == 10)
             {
-                for (int i = 0; i < getWidth(); i++)
+                for (int x = 0; x < getWidth(); x++)
                 {
-                    List objs = getObjectsAt(i, row, Block.class);
-                    for (Object obj : objs)
-                    {
-                        removeObject((Actor) obj);
-                    }
+                    removeObjects(getObjectsAt(x, row, Block.class));
                 }
-                for (int i = 0; i < row; i++)
+                for (int y = row; y >= 0; y--)
                 {
-                    for (int j = 0; j < getWidth(); j++)
+                    for (int x = 0; x < getWidth(); x++)
                     {
-                        List objs = getObjectsAt(j, i, Block.class);
-                        for (Object obj : objs)
+                        List blocks = getObjectsAt(x, y, Block.class);
+                        for (Actor b : (List<Actor>) blocks)
                         {
-                            Actor act = (Actor) obj;
-                            act.setLocation(act.getX(), act.getY() + 1);
+                            b.setLocation(x, y + 1);
                         }
                     }
+                    if (y != 0) { rows[y] = rows[y - 1]; }
                 }
-                row = 0;
+                rows[0] = 0;
             }
         }
     }
@@ -275,7 +290,7 @@ public class Game extends World
                 rotation = 0;
             }
         }
-        else if (currentShape == 3)
+        else if (currentShape == 4)
         {
             if (rotation == 0)
             {
@@ -292,32 +307,38 @@ public class Game extends World
                 rotation = 0;
             }
         }
-        else if (currentShape == 4)
+        else if (currentShape == 5)
         {
             if (rotation == 0)
             {
-                currentBlocks[2].setLocation(currentBlocks[1].getX(), currentBlocks[1].getY() - 1);
+                currentBlocks[0].setLocation(currentBlocks[1].getX(), currentBlocks[1].getY() - 1);
+                currentBlocks[2].setLocation(currentBlocks[1].getX(), currentBlocks[1].getY() + 1);
+                currentBlocks[3].setLocation(currentBlocks[1].getX() - 1, currentBlocks[1].getY());
                 rotation = 90;
             }
             else if (rotation == 90)
             {
-                currentBlocks[3].setLocation(currentBlocks[1].getX() + 1, currentBlocks[1].getY());
+                currentBlocks[0].setLocation(currentBlocks[1].getX() + 1, currentBlocks[1].getY());
+                currentBlocks[2].setLocation(currentBlocks[1].getX() - 1, currentBlocks[1].getY());
+                currentBlocks[3].setLocation(currentBlocks[1].getX(), currentBlocks[1].getY() - 1);
                 rotation = 180;
             }
             else if (rotation == 180)
             {                
                 currentBlocks[0].setLocation(currentBlocks[1].getX(), currentBlocks[1].getY() + 1);
+                currentBlocks[2].setLocation(currentBlocks[1].getX(), currentBlocks[1].getY() - 1);
+                currentBlocks[3].setLocation(currentBlocks[1].getX() + 1, currentBlocks[1].getY());
                 rotation = 270;
             }
             else if (rotation == 270)
             {                
-                currentBlocks[0].setLocation(currentBlocks[1].getX() -1, currentBlocks[1].getY());
+                currentBlocks[0].setLocation(currentBlocks[1].getX() - 1, currentBlocks[1].getY());
                 currentBlocks[2].setLocation(currentBlocks[1].getX() + 1, currentBlocks[1].getY());
                 currentBlocks[3].setLocation(currentBlocks[1].getX(), currentBlocks[1].getY() + 1);
                 rotation = 0;
             }
         }
-        else if (currentShape == 5)
+        else if (currentShape == 6)
         {
             if (rotation == 0)
             {
@@ -338,6 +359,150 @@ public class Game extends World
     
     public void rotateRight()
     {
+        if (currentShape == 0 )
+        {
+            if (rotation == 0)
+            {
+                currentBlocks[0].setLocation(currentBlocks[2].getX(), currentBlocks[2].getY() - 2);
+                currentBlocks[1].setLocation(currentBlocks[2].getX(), currentBlocks[2].getY() - 1);
+                currentBlocks[3].setLocation(currentBlocks[2].getX(), currentBlocks[2].getY() + 1);
+                rotation = 90;
+            }
+            else if (rotation == 90)
+            {
+                currentBlocks[0].setLocation(currentBlocks[2].getX() - 2, currentBlocks[2].getY());
+                currentBlocks[1].setLocation(currentBlocks[2].getX() - 1, currentBlocks[2].getY());
+                currentBlocks[3].setLocation(currentBlocks[2].getX() + 1, currentBlocks[2].getY());
+                rotation = 0;
+            }
+        }
+        else if (currentShape == 1)
+        {
+            if (rotation == 0)
+            {
+                currentBlocks[0].setLocation(currentBlocks[2].getX() + 1, currentBlocks[2].getY() - 1);
+                currentBlocks[1].setLocation(currentBlocks[2].getX(), currentBlocks[2].getY() + 1);
+                currentBlocks[3].setLocation(currentBlocks[2].getX(), currentBlocks[2].getY() - 1);
+                rotation = 270;
+            }
+            else if (rotation == 90)
+            {
+                currentBlocks[0].setLocation(currentBlocks[2].getX() + 1, currentBlocks[2].getY() + 1);
+                currentBlocks[1].setLocation(currentBlocks[2].getX() - 1, currentBlocks[2].getY());
+                currentBlocks[3].setLocation(currentBlocks[2].getX() + 1, currentBlocks[2].getY());
+                rotation = 0;
+            }
+            else if (rotation == 180)
+            {                
+                currentBlocks[0].setLocation(currentBlocks[2].getX() - 1, currentBlocks[2].getY() + 1);
+                currentBlocks[1].setLocation(currentBlocks[2].getX(), currentBlocks[2].getY() - 1);
+                currentBlocks[3].setLocation(currentBlocks[2].getX(), currentBlocks[2].getY() + 1);
+                rotation = 90;
+            }
+            else if (rotation == 270)
+            {                
+                currentBlocks[0].setLocation(currentBlocks[2].getX() - 1, currentBlocks[2].getY() - 1);
+                currentBlocks[1].setLocation(currentBlocks[2].getX() + 1, currentBlocks[2].getY());
+                currentBlocks[3].setLocation(currentBlocks[2].getX() - 1, currentBlocks[2].getY());
+                rotation = 180;
+            }
+        }
+        else if (currentShape == 2)
+        {
+            if (rotation == 0)
+            {
+                currentBlocks[0].setLocation(currentBlocks[2].getX() + 1, currentBlocks[2].getY() + 1);
+                currentBlocks[1].setLocation(currentBlocks[2].getX(), currentBlocks[2].getY() + 1);
+                currentBlocks[3].setLocation(currentBlocks[2].getX(), currentBlocks[2].getY() - 1);
+                rotation = 270;
+            }
+            else if (rotation == 90)
+            {
+                currentBlocks[0].setLocation(currentBlocks[2].getX() - 1, currentBlocks[2].getY() + 1);
+                currentBlocks[1].setLocation(currentBlocks[2].getX() - 1, currentBlocks[2].getY());
+                currentBlocks[3].setLocation(currentBlocks[2].getX() + 1, currentBlocks[2].getY());
+                rotation = 0;
+            }
+            else if (rotation == 180)
+            {                
+                currentBlocks[0].setLocation(currentBlocks[2].getX() - 1, currentBlocks[2].getY() - 1);
+                currentBlocks[1].setLocation(currentBlocks[2].getX(), currentBlocks[2].getY() - 1);
+                currentBlocks[3].setLocation(currentBlocks[2].getX(), currentBlocks[2].getY() + 1);
+                rotation = 90;
+            }
+            else if (rotation == 270)
+            {                
+                currentBlocks[0].setLocation(currentBlocks[2].getX() + 1, currentBlocks[2].getY() - 1);
+                currentBlocks[1].setLocation(currentBlocks[2].getX() + 1, currentBlocks[2].getY());
+                currentBlocks[3].setLocation(currentBlocks[2].getX() - 1, currentBlocks[2].getY());
+                rotation = 180;
+            }
+        }
+        else if (currentShape == 4)
+        {
+            if (rotation == 0)
+            {
+                currentBlocks[1].setLocation(currentBlocks[0].getX(), currentBlocks[0].getY() - 1);
+                currentBlocks[2].setLocation(currentBlocks[0].getX() + 1, currentBlocks[0].getY());
+                currentBlocks[3].setLocation(currentBlocks[0].getX() + 1, currentBlocks[0].getY() + 1);
+                rotation = 90;
+            }
+            else if (rotation == 90)
+            {
+                currentBlocks[1].setLocation(currentBlocks[0].getX() + 1, currentBlocks[0].getY());
+                currentBlocks[2].setLocation(currentBlocks[0].getX() - 1, currentBlocks[0].getY() + 1);
+                currentBlocks[3].setLocation(currentBlocks[0].getX(), currentBlocks[0].getY() + 1);
+                rotation = 0;
+            }
+        }
+        else if (currentShape == 5)
+        {
+            if (rotation == 0)
+            {
+                currentBlocks[0].setLocation(currentBlocks[1].getX(), currentBlocks[1].getY() + 1);
+                currentBlocks[2].setLocation(currentBlocks[1].getX(), currentBlocks[1].getY() - 1);
+                currentBlocks[3].setLocation(currentBlocks[1].getX() + 1, currentBlocks[1].getY());
+                rotation = 270;
+            }
+            else if (rotation == 90)
+            {
+                currentBlocks[0].setLocation(currentBlocks[1].getX() - 1, currentBlocks[1].getY());
+                currentBlocks[2].setLocation(currentBlocks[1].getX() + 1, currentBlocks[1].getY());
+                currentBlocks[3].setLocation(currentBlocks[1].getX(), currentBlocks[1].getY() + 1);
+                rotation = 0;
+            }
+            else if (rotation == 180)
+            {                
+                currentBlocks[0].setLocation(currentBlocks[1].getX(), currentBlocks[1].getY() - 1);
+                currentBlocks[2].setLocation(currentBlocks[1].getX(), currentBlocks[1].getY() + 1);
+                currentBlocks[3].setLocation(currentBlocks[1].getX() - 1, currentBlocks[1].getY());
+                rotation = 90;
+            }
+            else if (rotation == 270)
+            {                
+                currentBlocks[0].setLocation(currentBlocks[1].getX() + 1, currentBlocks[1].getY());
+                currentBlocks[2].setLocation(currentBlocks[1].getX() - 1, currentBlocks[1].getY());
+                currentBlocks[3].setLocation(currentBlocks[1].getX(), currentBlocks[1].getY() - 1);
+                rotation = 180;
+            }
+        }
+        else if (currentShape == 6)
+        {
+            if (rotation == 0)
+            {
+                currentBlocks[0].setLocation(currentBlocks[1].getX(), currentBlocks[1].getY() + 1);
+                currentBlocks[2].setLocation(currentBlocks[1].getX() + 1, currentBlocks[1].getY());
+                currentBlocks[3].setLocation(currentBlocks[1].getX() + 1, currentBlocks[1].getY() - 1);
+                rotation = 90;
+            }
+            else if (rotation == 90)
+            {
+                currentBlocks[0].setLocation(currentBlocks[1].getX() - 1, currentBlocks[1].getY());
+                currentBlocks[2].setLocation(currentBlocks[1].getX(), currentBlocks[1].getY() + 1);
+                currentBlocks[3].setLocation(currentBlocks[1].getX() + 1, currentBlocks[1].getY() + 1);
+                rotation = 0;
+            }
+        }
     }
     
     public boolean collideBottom()
@@ -351,6 +516,7 @@ public class Game extends World
             objs.remove(currentBlocks[3]);
             if (b.getY() + 1 == getHeight() || !objs.isEmpty())
             {
+                if (b.getY() == 0) { Greenfoot.stop(); }
                 rows[currentBlocks[0].getY()]++;
                 rows[currentBlocks[1].getY()]++;
                 rows[currentBlocks[2].getY()]++;
@@ -367,7 +533,7 @@ public class Game extends World
     {
         for (Block b : currentBlocks)
         {
-            List objs = getObjectsAt(b.getX(), b.getY(), Block.class);
+            List objs = getObjectsAt(b.getX() - 1, b.getY(), Block.class);
             objs.remove(currentBlocks[0]);
             objs.remove(currentBlocks[1]);
             objs.remove(currentBlocks[2]);

@@ -12,7 +12,7 @@ public class Block extends Actor
     {
         GreenfootImage image = new GreenfootImage(32, 32);
         image.setColor(Color.WHITE);
-        image.drawRect(0, 0, 31, 31);
+        image.fillRect(0, 0, 31, 31);
         this.setImage(image);
     }
     /**
