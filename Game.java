@@ -39,6 +39,10 @@ public class Game extends World
 
     public void act()
     {
+        boolean collideRight = collideRight();
+        boolean collideLeft = collideLeft();
+        boolean collideBottomNoStop = collideBottomNoStop();
+        
         time++;
         if (Greenfoot.isKeyDown("down") && !dropped && !downHeld)
         {
@@ -52,25 +56,7 @@ public class Game extends World
             downHeld = false;
         }
         
-        if (!rotatedLeft && Greenfoot.isKeyDown("x") && !collideLeft())
-        {
-            rotateLeft();
-            rotatedLeft = true;
-        }
-        else if (!Greenfoot.isKeyDown("x"))
-        {
-            rotatedLeft = false;
-        }
-        if (!rotatedRight && Greenfoot.isKeyDown("z") && !collideRight())
-        {
-            rotateRight();
-            rotatedRight = true;
-        }
-        else if (!Greenfoot.isKeyDown("z"))
-        {
-            rotatedRight = false;
-        }
-        if (Greenfoot.isKeyDown("left") && delay >= 10 && !collideLeft())
+        if (Greenfoot.isKeyDown("left") && delay >= 10 && !collideLeft)
         {
             delay = 0;
             currentBlocks[0].setLocation(currentBlocks[0].getX() - 1, currentBlocks[0].getY());
@@ -79,7 +65,7 @@ public class Game extends World
             currentBlocks[3].setLocation(currentBlocks[3].getX() - 1, currentBlocks[3].getY());
         }
         else { delay++; }
-        if (Greenfoot.isKeyDown("right") && delay >= 10 && !collideRight())
+        if (Greenfoot.isKeyDown("right") && delay >= 10 && !collideRight)
         {
             delay = 0;
             currentBlocks[0].setLocation(currentBlocks[0].getX() + 1, currentBlocks[0].getY());
@@ -88,6 +74,36 @@ public class Game extends World
             currentBlocks[3].setLocation(currentBlocks[3].getX() + 1, currentBlocks[3].getY());
         }
         else { delay++; }
+        
+        boolean shapeWillCollide = 
+            (currentShape == 0 && rotation == 90 || //I
+            (currentShape == 1 || currentShape == 2) && (rotation == 90 || rotation == 270) || //J L
+            (currentShape == 4 || currentShape == 6) && (rotation == 90) || //S Z
+            currentShape == 5 && (rotation == 90 || rotation == 270) //T
+            );
+        
+        boolean stopRotateLeft = shapeWillCollide && collideLeft || currentShape == 0 && rotation == 90 && currentBlocks[0].getX() + 1 <= 2;
+        boolean stopRotateRight = shapeWillCollide && collideRight || currentShape == 0 && rotation == 90 && currentBlocks[0].getX() + 1 >= getWidth();
+        
+        if (!rotatedLeft && Greenfoot.isKeyDown("x") && !(stopRotateLeft || stopRotateRight) && !collideBottomNoStop)
+        {
+            rotateLeft();
+            rotatedLeft = true;
+        }
+        else if (!Greenfoot.isKeyDown("x"))
+        {
+            rotatedLeft = false;
+        }
+        if (!rotatedRight && Greenfoot.isKeyDown("z") && !(stopRotateRight || stopRotateLeft)&& !collideBottomNoStop)
+        {
+            rotateRight();
+            rotatedRight = true;
+        }
+        else if (!Greenfoot.isKeyDown("z"))
+        {
+            rotatedRight = false;
+        }
+        
         if ((time >= gravity || (dropped && time > drop)) && !collideBottom())
         {
             time = 0;
@@ -207,6 +223,73 @@ public class Game extends World
                 rows[0] = 0;
             }
         }
+    }
+    
+    public boolean collideBottom()
+    {
+        if (collideBottomNoStop())
+        {
+            if (currentBlocks[0].getY() == 0 || currentBlocks[1].getY() == 0 || currentBlocks[2].getY() == 0 || currentBlocks[3].getY() == 0) { Greenfoot.stop(); }
+            rows[currentBlocks[0].getY()]++;
+            rows[currentBlocks[1].getY()]++;
+            rows[currentBlocks[2].getY()]++;
+            rows[currentBlocks[3].getY()]++;
+            checkRows();
+            newBlocks();
+            return true;
+        }
+        return false;
+    }
+    
+    public boolean collideBottomNoStop()
+    {
+        for (Block b : currentBlocks)
+        {
+            List objs = getObjectsAt(b.getX(), b.getY() + 1, Block.class);
+            objs.remove(currentBlocks[0]);
+            objs.remove(currentBlocks[1]);
+            objs.remove(currentBlocks[2]);
+            objs.remove(currentBlocks[3]);
+            if (b.getY() + 1 == getHeight() || !objs.isEmpty())
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    public boolean collideLeft()
+    {
+        for (Block b : currentBlocks)
+        {
+            List objs = getObjectsAt(b.getX() - 1, b.getY(), Block.class);
+            objs.remove(currentBlocks[0]);
+            objs.remove(currentBlocks[1]);
+            objs.remove(currentBlocks[2]);
+            objs.remove(currentBlocks[3]);
+            if (b.getX() == 0 || !objs.isEmpty())
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+    
+    public boolean collideRight()
+    {
+        for (Block b : currentBlocks)
+        {
+            List objs = getObjectsAt(b.getX() + 1, b.getY(), Block.class);
+            objs.remove(currentBlocks[0]);
+            objs.remove(currentBlocks[1]);
+            objs.remove(currentBlocks[2]);
+            objs.remove(currentBlocks[3]);
+            if (b.getX() + 1 == getWidth() || !objs.isEmpty())
+            {
+                return true;
+            }
+        }
+        return false;
     }
     
     public void rotateLeft()
@@ -503,63 +586,5 @@ public class Game extends World
                 rotation = 0;
             }
         }
-    }
-    
-    public boolean collideBottom()
-    {
-        for (Block b : currentBlocks)
-        {
-            List objs = getObjectsAt(b.getX(), b.getY() + 1, Block.class);
-            objs.remove(currentBlocks[0]);
-            objs.remove(currentBlocks[1]);
-            objs.remove(currentBlocks[2]);
-            objs.remove(currentBlocks[3]);
-            if (b.getY() + 1 == getHeight() || !objs.isEmpty())
-            {
-                if (b.getY() == 0) { Greenfoot.stop(); }
-                rows[currentBlocks[0].getY()]++;
-                rows[currentBlocks[1].getY()]++;
-                rows[currentBlocks[2].getY()]++;
-                rows[currentBlocks[3].getY()]++;
-                checkRows();
-                newBlocks();
-                return true;
-            }
-        }
-        return false;
-    }
-    
-    public boolean collideLeft()
-    {
-        for (Block b : currentBlocks)
-        {
-            List objs = getObjectsAt(b.getX() - 1, b.getY(), Block.class);
-            objs.remove(currentBlocks[0]);
-            objs.remove(currentBlocks[1]);
-            objs.remove(currentBlocks[2]);
-            objs.remove(currentBlocks[3]);
-            if (b.getX() == 0 || !objs.isEmpty())
-            {
-                return true;
-            }
-        }
-        return false;
-    }
-    
-    public boolean collideRight()
-    {
-        for (Block b : currentBlocks)
-        {
-            List objs = getObjectsAt(b.getX() + 1, b.getY(), Block.class);
-            objs.remove(currentBlocks[0]);
-            objs.remove(currentBlocks[1]);
-            objs.remove(currentBlocks[2]);
-            objs.remove(currentBlocks[3]);
-            if (b.getX() + 1 == getWidth() || !objs.isEmpty())
-            {
-                return true;
-            }
-        }
-        return false;
     }
 }
